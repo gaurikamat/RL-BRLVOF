@@ -221,7 +221,7 @@ for(s in 1:nsim){
                    B1=c(B1_mat),B2=c(B2_mat))
   X=matrix(cbind(rep(1,dim(Gamma)[1]),Gamma$B1,Gamma$B2),ncol=3,nrow=dim(Gamma)[1])
   
-  
+  # Define and initialzie linkage structure
   C=rep(0,dim(Gamma)[1])
   C[c(1,502,1003,1504,2005,2506,3007,3508,4009,4510,5011,5512,6013,6514,7015)]=1
   

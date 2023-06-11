@@ -124,7 +124,7 @@ for(s in 1:nsim){
   
   ############################################################
   #Introduce error into entries in dataset A
-  #Error in DOB
+  #Error in DOB, zip 
   DOB_day_error=rep(0,nrow(Data_A))
   DOB_month_error=rep(0,nrow(Data_A))
   DOB_year_error=rep(0,nrow(Data_A))
@@ -221,6 +221,7 @@ for(s in 1:nsim){
   X=matrix(cbind(rep(1,dim(Gamma)[1]),Gamma$B1,Gamma$B2),ncol=3,nrow=dim(Gamma)[1])
   
   
+  # Define and initialzie linkage structure
   C=rep(0,dim(Gamma)[1])
   C[c(1,502,1003,1504,2005,2506,3007,3508,4009,4510,5011,5512,6013,6514,7015)]=1
   
