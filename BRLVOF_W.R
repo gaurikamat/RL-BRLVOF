@@ -6,6 +6,7 @@ library(gtools)
 library(MCMCpack)
 
 
+
 # Set error level, regression error sd and conditional association between XA and XB
 ## er: error level. 'P'=no error, 'L'=20% error, 'H'=40% error
 ## er_sd: error sd in regression. 'H' = 0.5, 'L'=0.1
@@ -17,18 +18,23 @@ a_par = 10
 # Import file that sets above parameter sizes
 source("Sizes.R")
 
-# Define metrics to export
+# Define quantities to export
 Sensitivity=rep(0,nsim); Sensitivity_sd=rep(0,nsim)
 PPV=rep(0,nsim); PPV_sd=rep(0,nsim)
 F1=rep(0,nsim); F1_sd=rep(0,nsim)
 B1_bias=rep(0,nsim); B1_bias_sd=rep(0,nsim); B1c_bias=rep(0,nsim); B1c_bias_sd=rep(0,nsim)
 B1_RMSE=rep(0,nsim);B1c_RMSE=rep(0,nsim);cor_true=rep(0,nsim)
+wivar_beta = wivar_cor = bwvar_beta = bwvar_cor = mivar_beta = mivar_cor = num_links = num_links_sd = c()
+b_M = b_U = b_M_var = b_U_var = b_M_ll = b_M_ul = b_U_ll = b_U_ul = b_M_rmse = b_U_rmse =c()
+mean_cor_trans = mean_beta = c()
+
 
 # Start simulation
 for(s in 1:nsim){
   
   set.seed(s)
   print(s)
+  
   #########################################################################################################
   #Simulate data for linked individuals
   #V1: Date of Birth, Age~N(50 yrs, 5 yrs ^2), then convert age to DOB
@@ -49,63 +55,59 @@ for(s in 1:nsim){
   
   # Covariate and outcome
   W_m = rnorm(n_m,1,2)
-  X_m=mvrnorm(n_m,mu=rep(x_mn,4),Sigma=x_var*diag(4))
-  Y_1_m=rnorm(n_m,10+cond_assoc*(a_m1*X_m[,1]+a_m2*X_m[,2]+a_m3*X_m[,3]+a_m4*X_m[,4])+0.1*W_m, error_sd)
-
-  # Unique match IDs
+  X_m=mvrnorm(n_m,mu=c(x_mn,x_mn),Sigma=x_var*diag(2))
+  Y_1_m=rnorm(n_m,10+cond_assoc*(a_m1*X_m[,1]+a_m2*X_m[,2])+0.1*W_m, error_sd)
+  
   MatchID_m = round(runif(n_m,1000000,10000000))
   
   
   #Simulate data for unlinked individuals in file A
-  
-  # Linking variables
   V1_A = rnorm(N_A-n_m,50,5)
   V1_A = 2019-V1_A
   DOB_A = format(date_decimal(V1_A), "%d-%m-%Y")
   DOB_year_A = format(date_decimal(V1_A), "%Y")
   DOB_month_A = format(date_decimal(V1_A), "%m")
   DOB_day_A = format(date_decimal(V1_A), "%d")
+  
   Zip1_A = sample(c(1,2,3), size=N_A-n_m, replace=T)
   Zip2_A = sample(c(3,4,5,6), size=N_A-n_m, replace=T)
   Zip3_A = sample(c(7,8,9,0,1), size=N_A-n_m, replace=T)
   
+  Gender_A = round(runif(N_A-n_m,1,2))
+  
   # Covariate and outcome
   W_A = rnorm(N_A-n_m,1,2)
-  X_A=mvrnorm(N_A-n_m,mu=rep(x_mn,4),Sigma=x_var*diag(4))
-  Y_1_A=rnorm(N_A-n_m,5+cond_assoc*(a_u1*X_A[,1]+a_u2*X_A[,2]+a_u3*X_A[,3]+a_u4*X_A[,4])+0.1*W_A,error_sd)
+  X_A=mvrnorm(N_A-n_m,mu=c(x_mn,x_mn),Sigma=x_var*diag(2))
+  Y_1_A=rnorm(N_A-n_m,5+cond_assoc*(a_u1*X_A[,1]+a_u2*X_A[,2])+0.1*W_A,error_sd)
   
-
-  # Unique match IDs
   MatchID_A = sample(c(1000000:10000000),N_A-n_m,replace=F)
   
-  
   #Simulate data for unlinked individuals in file B
-  
-  #Linking variables
   V1_B = rnorm(N_B-n_m,50,5)
   V1_B = 2017-V1_B
   DOB_B = format(date_decimal(V1_B), "%d-%m-%Y")
   DOB_year_B = format(date_decimal(V1_B), "%Y")
   DOB_month_B = format(date_decimal(V1_B), "%m")
   DOB_day_B = format(date_decimal(V1_B), "%d")
+  
   Zip1_B = sample(c(1,2,3), size=N_B-n_m, replace=T)
   Zip2_B = sample(c(3,4,5,6), size=N_B-n_m, replace=T)
   Zip3_B = sample(c(7,8,9,0,1), size=N_B-n_m, replace=T)
+  
   Gender_B = round(runif(N_B-n_m,1,2))
- 
+  
   # Covariate and outcome
   W_B = rnorm(N_B-n_m,1,2)
-  X_B=mvrnorm(N_B-n_m,mu=rep(x_mn,4),Sigma=x_var*diag(4))
-  Y_1_B=rnorm(N_B-n_m,5+cond_assoc*(a_u1*X_B[,1]+a_u2*X_B[,2]+a_u3*X_B[,3]+a_u4*X_B[,4])+0.1*W_B,error_sd)
+  X_B=mvrnorm(N_B-n_m,mu=c(x_mn,x_mn),Sigma=x_var*diag(2))
+  Y_1_B=rnorm(N_B-n_m,5+cond_assoc*(a_u1*X_B[,1]+a_u2*X_B[,2])+0.1*W_B,error_sd)
   
-  # Unique match IDs
   MatchID_B = sample(c(1000000:10000000),N_B-n_m,replace=F)
   
   #Merge Linked Data together
   LinkData.A = data.frame(MatchID_m, DOB_year, DOB_month, DOB_day, Zip1, Zip2, Zip3, Gender,Y_1_m)
   
   LinkData.B = data.frame(MatchID_m, DOB_year, DOB_month, DOB_day, Zip1, Zip2, Zip3, Gender,
-                          B_1_m=X_m[,1],B_2_m=X_m[,2],B_3_m=X_m[,3],B_4_m=X_m[,4])
+                          B_1_m=X_m[,1],B_2_m=X_m[,2])
   
   #Merge Unlinked data in file A together
   N_A_unlinked = data.frame(MatchID_A, DOB_year_A, DOB_month_A, DOB_day_A, Zip1_A, Zip2_A, Zip3_A, Gender_A, Y_1_A)
@@ -114,16 +116,14 @@ for(s in 1:nsim){
   
   #Merge unlinked data in file B together
   N_B_unlinked = data.frame(MatchID_B, DOB_year_B, DOB_month_B, DOB_day_B, Zip1_B, Zip2_B, Zip3_B, Gender_B, 
-                            X_B[,1], X_B[,2], X_B[,3], X_B[,4])
+                            X_B[,1], X_B[,2])
   names(N_B_unlinked)=names(LinkData.B)
   
   #Combine data to form datasets A and B
   Data_A=rbind(LinkData.A,N_A_unlinked)
   Data_B=rbind(LinkData.B,N_B_unlinked)
-  
   levels(Data_A$DOB_year)=unique(c(levels(Data_A$DOB_year),levels(Data_B$DOB_year)))
   levels(Data_B$DOB_year)=unique(c(levels(Data_A$DOB_year),levels(Data_B$DOB_year)))
-  
   
   ############################################################
   #Introduce error into entries in dataset A
@@ -207,27 +207,23 @@ for(s in 1:nsim){
   Gamma10=Gender_gamma+0
   Gamma9=-(Gender_gamma)+1
   
-  #Create matrix for covariate and outcome
+  #Create Y_A and Y_B matrix
   Y_mat=matrix(Data_A$Y_1_m,nrow=nrow(Data_A),ncol=nrow(Data_B))
   B1_mat=t(matrix(Data_B$B_1_m,nrow=nrow(Data_B),ncol=nrow(Data_A)))
   B2_mat=t(matrix(Data_B$B_2_m,nrow=nrow(Data_B),ncol=nrow(Data_A)))
-  B3_mat=t(matrix(Data_B$B_3_m,nrow=nrow(Data_B),ncol=nrow(Data_A)))
-  B4_mat=t(matrix(Data_B$B_4_m,nrow=nrow(Data_B),ncol=nrow(Data_A)))
   
   #Create matrix for IDs
   ID1=matrix(Data_A$MatchID_m,nrow=N_A,ncol=N_B)
   ID2=t(matrix(Data_B$MatchID_m,nrow=N_B,ncol=N_A))
   
   ######################################################################
-  ######################################################################
-  #Collapse matrix data to data frame
+  ###Collapse matrix data to data frame
   Gamma=data.frame(ID1=c(ID1),ID2=c(ID2),Gamma1=c(Gamma1),Gamma2=c(Gamma2),Gamma3=c(Gamma3),Gamma4=c(Gamma4),Gamma5=c(Gamma5),
                    Gamma6=c(Gamma6),Gamma7=c(Gamma7),Gamma8=c(Gamma8),Gamma9=c(Gamma9),Gamma10=c(Gamma10),Y=c(Y_mat),
-                   B1=c(B1_mat),B2=c(B2_mat),B3=c(B3_mat),B4=c(B4_mat))
-  X=matrix(cbind(rep(1,dim(Gamma)[1]),Gamma$B1,Gamma$B2,Gamma$B3,Gamma$B4),ncol=5,nrow=dim(Gamma)[1])
+                   B1=c(B1_mat),B2=c(B2_mat))
+  X=matrix(cbind(rep(1,dim(Gamma)[1]),Gamma$B1,Gamma$B2),ncol=3,nrow=dim(Gamma)[1])
   
   
-  #Create and initialize linkage structure
   C=rep(0,dim(Gamma)[1])
   C[c(1,502,1003,1504,2005,2506,3007,3508,4009,4510,5011,5512,6013,6514,7015)]=1
   
@@ -241,7 +237,7 @@ for(s in 1:nsim){
   prior_Gender_U=c(1,1)
   prior_pi=c(1,1)
   
-  #Initialize parameters of linkage model
+  # Inittialize paramteres
   theta_M_DOB=matrix(0,nrow=length(prior_DOB_M),ncol=ngibbs)
   theta_U_DOB=matrix(0,nrow=length(prior_DOB_U),ncol=ngibbs)
   theta_M_ZIP=matrix(0,nrow=length(prior_ZIP_M),ncol=ngibbs)
@@ -250,17 +246,18 @@ for(s in 1:nsim){
   theta_U_Gender=matrix(0,nrow=length(prior_Gender_U),ncol=ngibbs)
   pi_M=matrix(0,nrow=1,ncol=ngibbs)
   
-  #Initialize regression paramters
-  beta_M=matrix(0,nrow=5,ncol=ngibbs)
-  beta_U=matrix(0,nrow=5,ncol=ngibbs)
+  beta_M=matrix(0,nrow=3,ncol=ngibbs)
+  beta_U=matrix(0,nrow=3,ncol=ngibbs)
+  
   sigma_M=matrix(0,nrow=1,ncol=ngibbs)
   sigma_U=matrix(0,nrow=1,ncol=ngibbs)
   
-  # Intermediary quantities
   LinkDesignation=matrix(0,nrow=N_A,ncol=ngibbs)
   LinkProbability=matrix(0,nrow=N_A,ncol=ngibbs)
+  
   beta_1=rep(0,ngibbs);cor_1 = rep(0,ngibbs)
-  mean_1=rep(0,ngibbs)
+  mean_1=rep(0,ngibbs); var_beta = var_cor = cor_trans=rep(0,ngibbs)
+  
   A_link=rep(0,dim(Data_A)[1])
   A_link[Data_A$MatchID_m%in%Gamma[C==1,]$ID1]=Gamma[C==1,]$ID2
   
@@ -271,18 +268,22 @@ for(s in 1:nsim){
   theta_U_ZIP[,1]=c(.9099,.05,.04,.0001)
   theta_M_Gender[,1]=c(.25,.75)
   theta_U_Gender[,1]=c(.75,.25)
-  start_coef=summary(lm(Y~B1+B2+B3+B4-1,data=Gamma))$coef[,1]
-  beta_M[,1]=c(rnorm(1,10,2),rnorm(1,a_m1,1),rnorm(1,a_m2,1),rnorm(1,a_m3,1),rnorm(1,a_m4,1))
-  beta_U[,1]=c(rnorm(1,5,2),rnorm(1,start_coef[1],.1),rnorm(1,start_coef[2],.1),rnorm(1,start_coef[3],.1),rnorm(1,start_coef[4],.1))
-  sigma_M[1]=a_m1^2+a_m2^2+a_m3^2+a_m4^2
-  sigma_U[1]=summary(lm(Y~B1+B2+B3+B4,data=Gamma))$sigma
   
+  start_coef=summary(lm(Y~B1+B2-1,data=Gamma))$coef[,1]
   
-  # Start posterior sampling
+  beta_M[,1]=c(rnorm(1,10,2),rnorm(1,a_m1,1),rnorm(1,a_m2,1))
+  beta_U[,1]=c(rnorm(1,5,2),rnorm(1,start_coef[1],.1),rnorm(1,start_coef[2],.1))
+  sigma_M[1]=a_m1^2+a_m2^2
+  sigma_U[1]=summary(lm(Y~B1+B2,data=Gamma))$sigma
+  
+  # True correlation coefficient
+  cor_true[s] = cor(Y_1_m,X_m[,1])
+  
+  # Start posterior sampler
   for(t in 1:(ngibbs-1)){
     
     #########################################################################################################################
-    ##Iterate through the rows of file A
+    ##Iterate through the rows of i
     for(i in 1:N_A){
       #Reset the results of C and A_link for row i
       C[Gamma$ID1==Data_A$MatchID_m[i]]=0
@@ -303,8 +304,8 @@ for(s in 1:nsim){
       Likelihood=log(num/den)
       
       #Calculate the ratio of likelihoods for the XA and XB components
-      num_Y=dnorm(Gamma_unlinked$Y, mean=matrix(cbind(rep(1,dim(Gamma_unlinked)[1]),Gamma_unlinked$B1,Gamma_unlinked$B2,Gamma_unlinked$B3,Gamma_unlinked$B4),ncol=5)%*%beta_M[,t], sd=sqrt(sigma_M[t]),log=T)
-      den_Y=dnorm(Gamma_unlinked$Y, mean=matrix(cbind(rep(1,dim(Gamma_unlinked)[1]),Gamma_unlinked$B1,Gamma_unlinked$B2,Gamma_unlinked$B3,Gamma_unlinked$B4),ncol=5)%*%beta_U[,t], sd=sqrt(sigma_U[t]),log=T)
+      num_Y=dnorm(Gamma_unlinked$Y, mean=matrix(cbind(rep(1,dim(Gamma_unlinked)[1]),Gamma_unlinked$B1,Gamma_unlinked$B2),ncol=3)%*%beta_M[,t], sd=sqrt(sigma_M[t]),log=T)
+      den_Y=dnorm(Gamma_unlinked$Y, mean=matrix(cbind(rep(1,dim(Gamma_unlinked)[1]),Gamma_unlinked$B1,Gamma_unlinked$B2),ncol=3)%*%beta_U[,t], sd=sqrt(sigma_U[t]),log=T)
       Likelihood_Y=num_Y-den_Y
       
       #Calculate the probability of individual i not linking
@@ -321,6 +322,7 @@ for(s in 1:nsim){
         A_link[i]=link_designation
         C[Gamma$ID1==Data_A$MatchID_m[i] & Gamma$ID2==link_designation]=1
         LinkDesignation[i,t]=link_designation
+        #LinkProbability[i,t]=B_prob[B_unlinked==link_designation]
       }
     }
     
@@ -349,28 +351,60 @@ for(s in 1:nsim){
     
     
     ############################################################################################################################
-    #Calculate Association for linked Sample
+    #Calculate Associations for linked Sample
     Data=data.frame(Data_A,A_link)
     Merge_data=merge(Data,Data_B,by.x="A_link",by.y="MatchID_m")
-    beta_1[t]=summary(lm(Y_1_m~B_1_m,data=Merge_data))$coef[2,1]
-    cor_1[t]=cor(Merge_data$Y_1_m,Merge_data$B_1_m)
+    if(sum(C)>1){beta_1[t]=summary(lm(Y_1_m~B_1_m,data=Merge_data))$coef[2,1];cor_1[t]=cor(Merge_data$Y_1_m,Merge_data$B_1_m)
+    cor_trans[t] = 0.5*log((1+cor_1[t])/(1-cor_1[t]))
+    var_beta[t] = summary(lm(Y_1_m~B_1_m,data=Merge_data))$coefficients[2,2]^2
+    var_cor[t] = 1/sqrt(nrow(Merge_data)-3)
+    }else{beta_1[t]=0;cor_1[t]=0;var_beta[t]=0;var_cor[t]=0;cor_trans[t]=0}
     mean_1[t]=mean(Merge_data$Y_1_m)
+    
     
     Sys.sleep(0.01)
     flush.console()
   }
   
-  #Store linkage quality metrics
+  
+  
+  # Store resultant quantities
   n=apply(LinkDesignation[,postburnin:endval],2,function(x) sum(x!=0))
   TP=apply(LinkDesignation[,postburnin:endval],2,function(x) sum(x==Data_A$MatchID_m))
   FP=n-TP
+  b_M[s] = mean(beta_M[2,postburnin:endval])
+  b_M_var[s] = var(beta_M[2,postburnin:endval])
+  b_U[s] = mean(beta_U[2,postburnin:endval])
+  b_U_var[s] = var(beta_U[2,postburnin:endval])
+  b_M_ll[s] = quantile(beta_M[2,postburnin:endval],probs=0.025)
+  b_M_ul[s] = quantile(beta_M[2,postburnin:endval],probs=0.975)
+  b_U_ll[s] = quantile(beta_U[2,postburnin:endval],probs=0.025)
+  b_U_ul[s] = quantile(beta_U[2,postburnin:endval],probs=0.975)
+  b_M_rmse[s] = sqrt(sum((beta_M[2,postburnin:endval]-cond_assoc*a_par)^2)/100)
+  b_U_rmse[s] = sqrt(sum((beta_U[2,postburnin:endval]-cond_assoc*non_link_assoc)^2)/100)
+  tab = data.frame(b_M,b_M_var,b_U,b_U_var,b_M_ll,b_M_ul,b_U_ll,b_U_ul,b_M_rmse,b_U_rmse)
+  num_links[s] = mean(n)
+  num_links_sd[s] = sd(n)
   Sensitivity[s]=mean(TP/n_m)
   Sensitivity_sd[s]=sd(TP/n_m)
   PPV[s]=mean(TP/n)
   PPV_sd[s]=sd(TP/n)
   F1[s]=mean(2*((TP/n_m)*(TP/n))/(TP/n_m+TP/n))
   F1_sd[s]=sd(2*((TP/n_m)*(TP/n))/(TP/n_m+TP/n))
-  B1_bias[s]=mean(abs(beta_1[postburnin:endval]-cond_assoc*a_par))
-  B1_bias_sd[s]=sd(abs(beta_1[postburnin:endval]-cond_assoc*a_par))
-  B1_RMSE[s]=sqrt(sum((beta_1[postburnin:endval]-cond_assoc*a_par)^2)/100)
+  B1_bias[s]=mean(abs(beta_1[postburnin:endval]-cond_assoc*a_par)); B1c_bias[s]=mean(abs(cor_1[postburnin:endval]-cor_true[s]))
+  B1_bias_sd[s]=sd(abs(beta_1[postburnin:endval]-cond_assoc*a_par)); B1c_bias_sd[s]=sd(abs(cor_1[postburnin:endval]-cor_true[s]))
+  B1_RMSE[s]=sqrt(sum((beta_1[postburnin:endval]-cond_assoc*a_par)^2)/100); B1c_RMSE[s]=sqrt(sum((cor_1[postburnin:endval]-cor_true[s])^2)/100)
+  wivar_beta[s] = mean(var_beta[postburnin:endval])
+  bwvar_beta[s] = var(beta_1[postburnin:endval])
+  mivar_beta[s] = (1+1/length(postburnin:endval))*bwvar_beta[s] + wivar_beta[s]
+  wivar_cor[s] = mean(var_cor[postburnin:endval])
+  bwvar_cor[s] = var(cor_trans[postburnin:endval])
+  mivar_cor[s] = (1+1/length(postburnin:endval))*bwvar_cor[s] + wivar_cor[s]
+  mean_cor_trans[s] = mean(cor_trans[postburnin:endval])
+  mean_beta[s] = mean(beta_1[postburnin:endval])
+  tab1 = data.frame(mean_cor_trans, bwvar_cor,wivar_cor,mivar_cor,mean_beta,wivar_beta,bwvar_beta,mivar_beta)
+  
+  
 }
+
+
