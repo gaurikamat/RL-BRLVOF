@@ -127,19 +127,17 @@ for(s in 1:nsim){
   
   ############################################################
   #Introduce error into entries in dataset A
-  #Error in DOB
+  #Error in DOB and ZIP
   DOB_day_error=rep(0,nrow(Data_A))
   DOB_month_error=rep(0,nrow(Data_A))
   DOB_year_error=rep(0,nrow(Data_A))
   ZIP1_error=rep(0,nrow(Data_A))
   ZIP2_error=rep(0,nrow(Data_A))
   ZIP3_error=rep(0,nrow(Data_A))
-  Gender_error=rep(0,nrow(Data_A))
   
   for (i in 1:N_A){
     DOBerror=runif(1)
     ZIPerror=runif(1)
-    Gendererror=runif(1)
     
     if(DOBerror>=0 & DOBerror<=(prob*(1)/(3*10))){
       Data_A$DOB_day[i]=sample(Data_B$DOB_day[Data_B$DOB_day!=Data_A$DOB_day[i]],1)
