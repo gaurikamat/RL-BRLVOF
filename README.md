@@ -10,3 +10,4 @@ Three files are provided corresponding to three general simulation scenarios:
 The linkage error level and regression parameters can be changed by resetting the parameters at the beginning of each R script. These parameters correspond to the values specified in Sizes.R.
 
 Additional simulations can be constructed using the configurations outlined in the paper along with the code provided.
+The Medicare and Meals on Wheels data are restricted, and thus cannot be made available here.
