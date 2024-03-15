@@ -1,6 +1,6 @@
 # Bayesian Record Linkage with Variables in One File
 
-Accompanying illustrative code for the article "Bayesian Record Linkage with Variables in One File".
+Accompanying illustrative code for the article "Bayesian Record Linkage with Variables in One File."
 
 Three files are provided corresponding to three general simulation scenarios: 
 1. BRLVOF_correct.R: corresponds to the case when the true relationship between the covariate and the outcome is linear
